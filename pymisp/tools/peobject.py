@@ -104,10 +104,16 @@ class PEObject(AbstractMISPObjectGenerator):
     def generate_attributes(self) -> None:
         self.add_attribute('type', value=self._get_pe_type())
         # General information
+        header = self.__pe.header
         self.add_attribute('entrypoint-address', value=self.__pe.entrypoint)
-        self.add_attribute('compilation-timestamp', value=datetime.utcfromtimestamp(self.__pe.header.time_date_stamps).isoformat())
+        self.add_attribute('compilation-timestamp', value=datetime.utcfromtimestamp(header.time_date_stamps).isoformat())
         self.add_attribute('imphash', value=lief.PE.get_imphash(self.__pe, lief.PE.IMPHASH_MODE.PEFILE))
         self.add_attribute('authentihash', value=self.__pe.authentihash_sha256.hex())
+        self.add_attribute('machine-type', value=f'{header.machine.value:x}')
+        self.add_attribute('pointer-to-symbol-table', value=f'{header.pointerto_symbol_table:x}')
+        self.add_attribute('number-of-symbols', value=header.numberof_symbols)
+        self.add_attribute('size-of-optional-header', value=header.sizeof_optional_header)
+        self.add_attribute('characteristics', value=f'{header.characteristics:x}')
         r_manager = self.__pe.resources_manager
         if isinstance(r_manager, lief.PE.ResourcesManager):
             version = r_manager.version
@@ -186,6 +192,46 @@ class PECertificate(AbstractMISPObjectGenerator):
         self.add_attribute('subject', value=self.__certificate.subject)
         self.add_attribute('signature_algorithm', value=self.__certificate.signature_algorithm)
         self.add_attribute('raw-base64', value=b64encode(self.__certificate.raw))
+
+
+class PEOptionalHeaderObject(AbstractMISPObjectGenerator):
+
+    def __init__(self, optional_header: lief.PE.OptionalHeader, **kwargs) -> None:
+        super().__init__('pe-optional-header')
+        self.__optional_header = optional_header
+        self.generate_attributes()
+
+    def generate_attributes(self) -> None:
+        self.add_attribute('entrypoint-address', value=self.__optional_header.addressof_entrypoint)
+        self.add_attribute('base-of-code', value=self.__optional_header.baseof_code)
+        self.add_attribute('base-of-data', value=self.__optional_header.baseof_data)
+        self.add_attribute('checksum', value=f'{self.__optional_header.checksum:x}')
+        self.add_attribute('dll-characteristics', value=f'{self.__optional_header.dll_characteristics:x}')
+        self.add_attribute('file-alignment', value=self.__optional_header.file_alignment)
+        self.add_attribute('image-base', value=self.__optional_header.imagebase)
+        self.add_attribute('magic', value=f'{self.__optional_header.magic.value:x}')
+        self.add_attribute('loader-flags', value=self.__optional_header.loader_flags)
+        self.add_attribute('major-image-version', value=self.__optional_header.major_image_version)
+        self.add_attribute('major-linker-version', value=self.__optional_header.major_linker_version)
+        self.add_attribute('major-os-version', value=self.__optional_header.major_operating_system_version)
+        self.add_attribute('major-subsystem-version', value=self.__optional_header.major_subsystem_version)
+        self.add_attribute('minor-image-version', value=self.__optional_header.minor_image_version)
+        self.add_attribute('minor-linker-version', value=self.__optional_header.minor_linker_version)
+        self.add_attribute('minor-os-version', value=self.__optional_header.minor_operating_system_version)
+        self.add_attribute('minor-subsystem-version', value=self.__optional_header.minor_subsystem_version)
+        self.add_attribute('number-of-rva-and-size', value=self.__optional_header.numberof_rva_and_size)
+        self.add_attribute('section-alignment', value=self.__optional_header.section_alignment)
+        self.add_attribute('size-of-code', value=self.__optional_header.sizeof_code)
+        self.add_attribute('size-of-headers', value=self.__optional_header.sizeof_headers)
+        self.add_attribute('size-of-heap-commit', value=self.__optional_header.sizeof_heap_commit)
+        self.add_attribute('size-of-heap-reserve', value=self.__optional_header.sizeof_heap_reserve)
+        self.add_attribute('size-of-image', value=self.__optional_header.sizeof_image)
+        self.add_attribute('size-of-initialised-data', value=self.__optional_header.sizeof_initialized_data)
+        self.add_attribute('size-of-stack-commit', value=self.__optional_header.sizeof_stack_commit)
+        self.add_attribute('size-of-stack-reserve', value=self.__optional_header.sizeof_stack_reserve)
+        self.add_attribute('size-of-uninitialised-data', value=self.__optional_header.sizeof_uninitialized_data)
+        self.add_attribute('subsystem', value=f'{self.__optional_header.subsystem.value:x}')
+        self.add_attribute('win32-version-value', value=f'{self.__optional_header.win32_version_value:x}')
 
 
 class PESigners(AbstractMISPObjectGenerator):
