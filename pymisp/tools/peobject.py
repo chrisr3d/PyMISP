@@ -43,6 +43,49 @@ class PEObject(AbstractMISPObjectGenerator):
 
     __pe: lief.PE.Binary
 
+    __characteristics_mapping: dict[int, str] = {
+        1: "RELOCS_STRIPPED",
+        2: "EXECUTABLE_IMAGE",
+        4: "LINE_NUMS_STRIPPED",
+        8: "LOCAL_SYMS_STRIPPED",
+        16: "AGGRESSIVE_WS_TRIM",
+        32: "LARGE_ADDRESS_AWARE",
+        128: "BYTES_REVERSED_LO",
+        256: "NEED_32BIT_MACHINE",
+        512: "DEBUG_STRIPPED",
+        1024: "REMOVABLE_RUN_FROM_SWAP",
+        2048: "NET_RUN_FROM_SWAP",
+        4096: "SYSTEM",
+        8192: "DLL",
+        16384: "UP_SYSTEM_ONLY",
+        32768: "BYTES_REVERSED_HI"
+    }
+    __machine_type_mapping: dict[str, str] = {
+        "1d3": "AM33",
+        "8664": "AMD64",
+        "1c0": "ARM",
+        "aa64": "ARM64",
+        "1c4": "ARMNT",
+        "ebc": "EBC",
+        "14c": "I386",
+        "200": "IA64",
+        "9041": "M32R",
+        "266": "MIPS16",
+        "366": "MIPSFPU",
+        "466": "MIPSFPU16",
+        "1f0": "POWERPC",
+        "1f1": "POWERPCFP",
+        "166": "R4000",
+        "1a2": "SH3",
+        "1a3": "SH3DSP",
+        "1a6": "SH4",
+        "1a8": "SH5",
+        "1c2": "THUMB",
+        "0": "UNKNOWN",
+        "169": "WCEMIPSV2"
+    }
+
+
     def __init__(self, parsed: lief.PE.Binary | None = None,  # type: ignore[no-untyped-def]
                  filepath: Path | str | None = None,
                  pseudofile: BytesIO | list[int] | None = None,
@@ -109,11 +152,19 @@ class PEObject(AbstractMISPObjectGenerator):
         self.add_attribute('compilation-timestamp', value=datetime.utcfromtimestamp(header.time_date_stamps).isoformat())
         self.add_attribute('imphash', value=lief.PE.get_imphash(self.__pe, lief.PE.IMPHASH_MODE.PEFILE))
         self.add_attribute('authentihash', value=self.__pe.authentihash_sha256.hex())
-        self.add_attribute('machine-type', value=f'{header.machine.value:x}')
+        machine_type_hex = f'{header.machine.value:x}'
+        machine_type = self.__machine_type_mapping.get(machine_type_hex)
+        if machine_type is not None:
+            self.add_attribute('machine-type', value=machine_type)
+        self.add_attribute('machine-type-hex', value=machine_type_hex)
         self.add_attribute('pointer-to-symbol-table', value=f'{header.pointerto_symbol_table:x}')
         self.add_attribute('number-of-symbols', value=header.numberof_symbols)
         self.add_attribute('size-of-optional-header', value=header.sizeof_optional_header)
-        self.add_attribute('characteristics', value=f'{header.characteristics:x}')
+        for characteristic_int in header.characteristics_list:
+            characteristic = self.__characteristics_mapping.get(characteristic_int)
+            if characteristic is not None:
+                self.add_attribute('characteristics', value=characteristic)
+        self.add_attribute('characteristics-hex', value=f'{header.characteristics:x}')
         r_manager = self.__pe.resources_manager
         if isinstance(r_manager, lief.PE.ResourcesManager):
             version = r_manager.version
