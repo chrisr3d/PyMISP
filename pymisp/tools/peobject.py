@@ -180,10 +180,11 @@ class PEObject(AbstractMISPObjectGenerator):
                 self.add_attribute('legal-copyright', value=fileinfo.get('LegalCopyright'))
                 self.add_attribute('lang-id', value=version.string_file_info.langcode_items[0].key)
         # Optional Header
-        self.__pe.optional_header = PEOptionalHeaderObject(
+        self.optional_header = PEOptionalHeaderObject(
             self.__pe.optional_header, standalone=self._standalone,
             default_attributes_parameters=self._default_attributes_parameters
         )
+        self.add_reference(self.optional_header.uuid, 'includes', 'PE Optional Header')
         # Sections
         self.sections = []
         if self.__pe.sections:
@@ -292,11 +293,11 @@ class PEOptionalHeaderObject(AbstractMISPObjectGenerator):
         self.generate_attributes()
 
     def generate_attributes(self) -> None:
-        self.add_attribute('entrypoint-address', value=self.__optional_header.addressof_entrypoint)
+        self.add_attribute('address-of-entrypoint', value=self.__optional_header.addressof_entrypoint)
         self.add_attribute('base-of-code', value=self.__optional_header.baseof_code)
         self.add_attribute('base-of-data', value=self.__optional_header.baseof_data)
         self.add_attribute('checksum', value=f'{self.__optional_header.checksum:x}')
-        for characteristic_int in self.__optional_header.dll_characteristics_list:
+        for characteristic_int in self.__optional_header.dll_characteristics_lists:
             characteristic = self.__characteristics_mapping.get(characteristic_int)
             if characteristic is not None:
                 self.add_attribute('dll-characteristics', value=characteristic)
