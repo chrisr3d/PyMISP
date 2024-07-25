@@ -179,6 +179,11 @@ class PEObject(AbstractMISPObjectGenerator):
                 self.add_attribute('company-name', value=fileinfo.get('CompanyName'))
                 self.add_attribute('legal-copyright', value=fileinfo.get('LegalCopyright'))
                 self.add_attribute('lang-id', value=version.string_file_info.langcode_items[0].key)
+        # Optional Header
+        self.__pe.optional_header = PEOptionalHeaderObject(
+            self.__pe.optional_header, standalone=self._standalone,
+            default_attributes_parameters=self._default_attributes_parameters
+        )
         # Sections
         self.sections = []
         if self.__pe.sections:
@@ -247,6 +252,40 @@ class PECertificate(AbstractMISPObjectGenerator):
 
 class PEOptionalHeaderObject(AbstractMISPObjectGenerator):
 
+    __characteristics_mapping: dict[int, str] = {
+        32: "HIGH_ENTROPY_VA",
+        64: "DYNAMIC_BASE",
+        128: "FORCE_INTEGRITY",
+        256: "NX_COMPAT",
+        512: "NO_ISOLATION",
+        1024: "NO_SEH",
+        2048: "NO_BIND",
+        4096: "APPCONTAINER",
+        8192: "WDM_DRIVER",
+        16384: "GUARD_CF",
+        32768: "TERMINAL_SERVER_AWARE",
+    }
+    __magic_mapping: dict[str, str] = {
+        '10b': 'PE32',
+        '20b': 'PE32_PLUS'
+    }
+    __subsystem_mapping: dict[str, str] = {
+        "a": "EFI_APPLICATION",
+        "b": "EFI_BOOT_SERVICE_DRIVER",
+        "d": "EFI_ROM",
+        "c": "EFI_RUNTIME_DRIVER",
+        "1": "NATIVE",
+        "8": "NATIVE_WINDOWS",
+        "5": "OS2_CUI",
+        "7": "POSIX_CUI",
+        "0": "UNKNOWN",
+        "10": "WINDOWS_BOOT_APPLICATION",
+        "9": "WINDOWS_CE_GUI",
+        "3": "WINDOWS_CUI",
+        "2": "WINDOWS_GUI",
+        "e": "XBOX"
+    }
+
     def __init__(self, optional_header: lief.PE.OptionalHeader, **kwargs) -> None:
         super().__init__('pe-optional-header')
         self.__optional_header = optional_header
@@ -257,11 +296,19 @@ class PEOptionalHeaderObject(AbstractMISPObjectGenerator):
         self.add_attribute('base-of-code', value=self.__optional_header.baseof_code)
         self.add_attribute('base-of-data', value=self.__optional_header.baseof_data)
         self.add_attribute('checksum', value=f'{self.__optional_header.checksum:x}')
-        self.add_attribute('dll-characteristics', value=f'{self.__optional_header.dll_characteristics:x}')
+        for characteristic_int in self.__optional_header.dll_characteristics_list:
+            characteristic = self.__characteristics_mapping.get(characteristic_int)
+            if characteristic is not None:
+                self.add_attribute('dll-characteristics', value=characteristic)
+        self.add_attribute('dll-characteristics-hex', value=f'{self.__optional_header.dll_characteristics:x}')
         self.add_attribute('file-alignment', value=self.__optional_header.file_alignment)
         self.add_attribute('image-base', value=self.__optional_header.imagebase)
-        self.add_attribute('magic', value=f'{self.__optional_header.magic.value:x}')
-        self.add_attribute('loader-flags', value=self.__optional_header.loader_flags)
+        magic_hex = f'{self.__optional_header.magic.value:x}'
+        magic = self.__magic_mapping.get(magic_hex)
+        if magic is not None:
+            self.add_attribute('magic', value=magic)
+        self.add_attribute('magic', value=magic_hex)
+        self.add_attribute('loader-flags', value=f'{self.__optional_header.loader_flags:x}')
         self.add_attribute('major-image-version', value=self.__optional_header.major_image_version)
         self.add_attribute('major-linker-version', value=self.__optional_header.major_linker_version)
         self.add_attribute('major-os-version', value=self.__optional_header.major_operating_system_version)
@@ -281,7 +328,11 @@ class PEOptionalHeaderObject(AbstractMISPObjectGenerator):
         self.add_attribute('size-of-stack-commit', value=self.__optional_header.sizeof_stack_commit)
         self.add_attribute('size-of-stack-reserve', value=self.__optional_header.sizeof_stack_reserve)
         self.add_attribute('size-of-uninitialised-data', value=self.__optional_header.sizeof_uninitialized_data)
-        self.add_attribute('subsystem', value=f'{self.__optional_header.subsystem.value:x}')
+        subsystem_hex = f'{self.__optional_header.subsystem.value:x}'
+        subsystem = self.__subsystem_mapping.get(subsystem_hex)
+        if subsystem is not None:
+            self.add_attribute('subsystem', value=subsystem)
+        self.add_attribute('subsystem', value=subsystem_hex)
         self.add_attribute('win32-version-value', value=f'{self.__optional_header.win32_version_value:x}')
 
 
