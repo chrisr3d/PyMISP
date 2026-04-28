@@ -1266,6 +1266,7 @@ class TestComprehensive(unittest.TestCase):
         try:
             first = self.user_misp_connector.add_event(first)
             stix = self.user_misp_connector.search(return_format='stix', eventid=first.id)
+            print(stix)
             self.assertTrue(stix['related_packages']['related_packages'][0]['package']['incidents'][0]['related_indicators']['indicators'][0]['indicator']['observable']['object']['properties']['address_value']['value'], '8.8.8.8')
             stix2 = self.user_misp_connector.search(return_format='stix2', eventid=first.id)
             *_, ip_address, indicator, _ = stix2['objects']
